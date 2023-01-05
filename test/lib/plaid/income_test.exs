@@ -30,6 +30,45 @@ defmodule Plaid.IncomeTest do
              })
   end
 
+  describe "income get_credit_sessions/2" do
+    @tag :unit
+    test "sends request and properly parses response", %{params: params, config: config} do
+      PlaidMock
+      |> expect(:send_request, fn request, _client ->
+        assert request.method == :post
+        assert request.endpoint == "credit/sessions/get"
+        assert %{metadata: _} = request.opts
+        {:ok, %Tesla.Env{}}
+      end)
+      |> expect(:handle_response, fn _response, mapper ->
+        body = http_response_body(:get_credit_sessions)
+        {:ok, mapper.(body)}
+      end)
+
+      assert {:ok, ds} = Plaid.Income.get_credit_sessions(params, config)
+      assert Plaid.Income.Income.CreditSessions == ds.__struct__
+      assert Plaid.Income.Income.CreditSession == List.first(ds.sessions).__struct__
+      assert Plaid.Income.Income.CreditSession.BankIncomeResult == ds.sessions
+        |> List.first
+        |> Map.get(:results)
+        |> Map.get(:bank_income_results)
+        |> List.first
+        |> Map.get(:__struct__)
+      assert Plaid.Income.Income.CreditSession.PayrollIncomeResult == ds.sessions
+        |> List.first
+        |> Map.get(:results)
+        |> Map.get(:payroll_income_results)
+        |> List.first
+        |> Map.get(:__struct__)
+      assert Plaid.Income.Income.CreditSession.ItemAddResult == ds.sessions
+        |> List.first
+        |> Map.get(:results)
+        |> Map.get(:item_add_results)
+        |> List.first
+        |> Map.get(:__struct__)
+    end
+  end
+
   describe "income get/2" do
     @tag :unit
     test "sends request and unmarshalls response", %{params: params, config: config} do

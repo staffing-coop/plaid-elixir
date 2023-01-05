@@ -1389,6 +1389,54 @@ defmodule Plaid.Factory do
     }
   end
 
+  def http_response_body(:get_credit_sessions) do
+    %{
+      "request_id" => "Aim3b",
+      "sessions" => [
+        %{
+          "link_session_id" => "356dbb28-7f98-44d1-8e6d-0cec580f3171",
+          "results" => %{
+            "bank_income_results" => [
+              %{
+                "institution_id" => "ins_56",
+                "item_id" => "M5eVJqLnv3tbzdngLDp9FL5OlDNxlNhlE55op",
+                "status" => "APPROVED"
+              }
+            ],
+            "item_add_results" => [
+              %{
+                "institution_id" => "ins_56",
+                "item_id" => "M5eVJqLnv3tbzdngLDp9FL5OlDNxlNhlE55op",
+                "public_token" => "public-sandbox-5c224a01-8314-4491-a06f-39e193d5cddc"
+              }
+            ],
+            "payroll_income_results" => [
+              %{
+                "institution_id" => "ins_92",
+                "num_paystubs_retrieved" => 2,
+                "num_w2s_retrieved" => 1
+              }
+            ]
+          },
+          "session_start_time" => "2022-09-30T23:40:30.946225Z"
+        },
+        %{
+          "link_session_id" => "f742cae8-31e4-49cc-a621-6cafbdb26fb9",
+          "results" => %{
+            "payroll_income_results" => [
+              %{
+                "institution_id" => "ins_92",
+                "num_paystubs_retrieved" => 2,
+                "num_w2s_retrieved" => 1
+              }
+            ]
+          },
+          "session_start_time" => "2022-09-26T23:40:30.946225Z"
+        }
+      ]
+    }
+  end
+
   def http_response_body(:get_asset_report) do
     %{
       "report" => %{
