@@ -18,6 +18,59 @@ defmodule Plaid.Income do
   @type config :: %{required(atom) => String.t() | keyword}
   @type error :: {:error, Plaid.Error.t() | any()} | no_return
 
+  defmodule BankIncome do
+    @derive Jason.Encoder
+    defstruct bank_income_id: nil,
+              generated_time: nil,
+              days_requested: nil,
+              bank_income_summary: nil
+              # items: []
+
+    @type t :: %__MODULE__{
+            bank_income_id: String.t(),
+            generated_time: DateTime.t(),
+            days_requested: Integer.t(),
+            bank_income_summary: %BankIncome.Summary{}
+            # items: [%BankIncome.Item{}]
+          }
+
+    defmodule Summary do
+      @derive Jason.Encoder
+      defstruct total_amount: nil,
+                iso_currency_code: nil,
+                start_date: nil,
+                end_date: nil
+
+      @type t :: %__MODULE__{
+        total_amount: float(),
+        iso_currency_code: String.t(),
+        # FIXME parse date string
+        start_date: String.t(),
+        end_date: String.t()
+      }
+    end
+
+    # defmodule Item do
+    #   @derive Jason.Encoder
+    #   defstruct bank_income_summary: nil
+
+    #   @type t :: %__MODULE__{
+    #     bank_income_summary: %BankIncome.Summary{}
+    #   }
+
+    # end
+
+  end
+
+  defmodule BankIncomeResults do
+    @derive Jason.Encoder
+    defstruct bank_income: []
+
+    @type t :: %__MODULE__{
+      bank_income: [%BankIncome{}]
+    }
+  end
+
   defmodule Income do
     @moduledoc """
     Plaid.Income Income data structure.
@@ -74,6 +127,8 @@ defmodule Plaid.Income do
         #   payroll_income_results: [Plaid.Income.Income.CreditSessionPayrollIncomeResult.t()],
         # }
       }
+
+      # FIXME: qualify these items to the credit session scope, not general income domain
       defmodule PayrollIncomeResult do
         @derive Jason.Encoder
         defstruct num_paystubs_retrieved: nil, num_w2s_retrieved: nil, institution_id: nil
@@ -130,6 +185,17 @@ defmodule Plaid.Income do
         sessions: [Plaid.Income.Income.CreditSession.t()]
       }
     end
+
+    defmodule UserToken do
+      @derive Jason.Encoder
+      defstruct request_id: nil, user_token: nil, user_id: nil
+
+      @type t :: %__MODULE__{
+        request_id: String.t(),
+        user_token: String.t(),
+        user_id: String.t()
+      }
+    end
   end
 
   @doc """
@@ -150,9 +216,22 @@ defmodule Plaid.Income do
     |> struct(method: :post, endpoint: "income/get", body: params)
     |> Request.add_metadata(config)
     |> c.send_request(Client.new(config))
-    |> c.handle_response(&map_income(&1))
+    |> c.handle_response(&map_bank_income(&1))
   end
 
+  @spec create_user(params, config) :: {:ok, Plaid.Income.UserToken.t()} | error
+  def create_user(params, config \\ %{}) do
+    c = config[:client] || Plaid
+
+    Request
+    |> struct(method: :post, endpoint: "user/create", body: params)
+    |> Request.add_metadata(config)
+    |> c.send_request(Client.new(config))
+    |> c.handle_response(&map_user_create(&1))
+
+  end
+
+  @spec get_credit_sessions(any, map) :: any
   def get_credit_sessions(params, config \\ %{}) do
     c = config[:client] || Plaid
 
@@ -167,23 +246,22 @@ defmodule Plaid.Income do
     c = config[:client] || Plaid
 
     Request
-    |> struct(method: :post, endpoint: "income/get", body: params)
+    |> struct(method: :post, endpoint: "credit/bank_income/get", body: params)
     |> Request.add_metadata(config)
     |> c.send_request(Client.new(config))
-    |> c.handle_response(&map_income(&1))
+    |> c.handle_response(&map_bank_income(&1))
   end
 
-  defp map_income(body) do
+  defp map_bank_income(body) do
     Poison.Decode.transform(
       body,
       %{
-        as: %Plaid.Income{
-          item: %Plaid.Item{},
-          income: %Plaid.Income.Income{
-            income_streams: [
-              %Plaid.Income.Income.IncomeStream{}
-            ]
-          }
+        as: %Plaid.Income.BankIncomeResults{
+          bank_income: [ %Plaid.Income.BankIncome{
+            bank_income_summary: %Plaid.Income.BankIncome.Summary{}
+            # items: [%Plaid.Income.BankIncome.Item{
+            # }]
+          }]
         }
       }
     )
@@ -205,6 +283,15 @@ defmodule Plaid.Income do
             }
           ]
         }
+      }
+    )
+  end
+
+  defp map_user_create(body) do
+    Poison.Decode.transform(
+      body,
+      %{
+        as: %Plaid.Income.Income.UserToken{}
       }
     )
   end
